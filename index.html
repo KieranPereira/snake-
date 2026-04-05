@@ -414,7 +414,7 @@ function startGame(){gamePhase='countdown';currentRound=1;teamScores=[0,0];isPau
 function gameLoop(){
   if(gamePhase!=='playing'||isPaused){return;}
   var actualTick=TICK_MS;
-  if(puEnabled&&puConfig.turbo){for(var i=0;i<players.length;i++){if(players[i].alive&&players[i]._turbo){actualTick=Math.floor(TICK_MS/2);break;}}}
+  if(puEnabled){for(var i=0;i<players.length;i++){if(players[i].alive&&((puConfig.turbo&&players[i]._turbo)||(puConfig.speed&&players[i].effects&&players[i].effects.speed>0))){actualTick=Math.floor(TICK_MS/2);break;}}}
   tick();if(puEnabled)tickPowerUps();tickParticles();broadcastState();render();updateScoreDisplay();
   var roundOver=false,winResult=null;
   if(gameMode==='teams'){var aA=0,bA=0;for(var i=0;i<players.length;i++){if(!players[i].alive)continue;if(players[i].team===0)aA++;if(players[i].team===1)bA++;}
@@ -495,9 +495,10 @@ function drawTubeSnake(p,style,idx){
   var isGhost=alive&&p.effects&&p.effects.ghost>0,isInvinc=alive&&p.effects&&p.effects.invincible>0;
   if(isGhost)ctx.globalAlpha=.45;
   ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.lineWidth=TUBE_W+3;ctx.strokeStyle=style.lo;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(var i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();
-  ctx.lineWidth=TUBE_W;ctx.strokeStyle=style.body;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(var i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);ctx.stroke();
-  ctx.lineWidth=TUBE_W*.28;ctx.strokeStyle=style.hi;ctx.beginPath();ctx.moveTo(pts[0].x-1.2,pts[0].y-1.2);for(var i=1;i<pts.length;i++)ctx.lineTo(pts[i].x-1.2,pts[i].y-1.2);ctx.stroke();
+  function strokeSegments(pts,offX,offY){ctx.beginPath();ctx.moveTo(pts[0].x+offX,pts[0].y+offY);for(var i=1;i<pts.length;i++){var dx=Math.abs(snake[i][0]-snake[i-1][0]),dy=Math.abs(snake[i][1]-snake[i-1][1]);if(dx>1||dy>1){ctx.stroke();ctx.beginPath();ctx.moveTo(pts[i].x+offX,pts[i].y+offY);}else ctx.lineTo(pts[i].x+offX,pts[i].y+offY);}ctx.stroke();}
+  ctx.lineWidth=TUBE_W+3;ctx.strokeStyle=style.lo;strokeSegments(pts,0,0);
+  ctx.lineWidth=TUBE_W;ctx.strokeStyle=style.body;strokeSegments(pts,0,0);
+  ctx.lineWidth=TUBE_W*.28;ctx.strokeStyle=style.hi;strokeSegments(pts,-1.2,-1.2);
   // Trail glow
   if(alive&&pts.length>1){ctx.globalAlpha=.12;ctx.fillStyle=COLORS_FLAT[idx];ctx.beginPath();ctx.arc(pts[1].x,pts[1].y,TUBE_W*.7,0,Math.PI*2);ctx.fill();if(pts.length>2){ctx.globalAlpha=.06;ctx.beginPath();ctx.arc(pts[2].x,pts[2].y,TUBE_W*.5,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=isGhost?.45:1;}
   // Head dot
@@ -524,7 +525,7 @@ document.addEventListener('keydown',function(e){
     if((waitingForSpace||gamePhase==='gameOver')&&isHost)startNextAction();
     else if((waitingForSpace||gamePhase==='gameOver')&&!isHost&&conns[0])conns[0].send({type:'space'});return;}
   if(e.key==='Shift'&&puEnabled&&puConfig.turbo){if(isHost&&players[myIdx])players[myIdx]._turbo=true;else if(conns[0])conns[0].send({type:'turbo',on:true});}
-  var dir=KEY_MAP[e.key];if(dir){e.preventDefault();if(gamePhase==='playing'&&!isPaused)sendInput(dir);}
+  var dir=KEY_MAP[e.key];if(dir){if(gamePhase==='playing'&&!isPaused){e.preventDefault();sendInput(dir);}}
 });
 document.addEventListener('keyup',function(e){if(e.key==='Shift'){if(isHost&&players[myIdx])players[myIdx]._turbo=false;else if(conns[0])conns[0].send({type:'turbo',on:false});}});
 var touchStart=null;
